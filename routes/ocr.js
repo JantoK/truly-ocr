@@ -34,7 +34,10 @@ function mergeText(data) {
 }
 
 // 提取关键信息
-function extractInformation(data) {
+async function extractInformation(data) {
+  const pattern = /公民身份号码|公民|身份|号码/g;
+  const addressPattern = /公民身份号码|公民身份|身份号码|姓名|民族|性别|出生/g;
+
   const info = {
     name: "",
     gender: "",
@@ -45,48 +48,86 @@ function extractInformation(data) {
   };
 
   let foundName = false;
+  let foundGender = false;
+  let foundEthnic = false;
   let foundBirth = false;
-  let foundGenderAndEthnic = false;
-  let foundAddress = false;
+  let foundId = false;
 
-  data.forEach((item) => {
+  await data.forEach((item) => {
     const text = item.text;
-    const pattern = /公民身份号码|公民|身份|号码/g;
+    // 提取名字
     if (!foundName && text.includes("姓名")) {
-      info["name"] = text.replace("姓名", "").trim();
+      const nameIndex = text.indexOf("姓名");
+      info["name"] = text.substring(nameIndex + 2).trim();
       foundName = true;
-    } else if (
-      !foundGenderAndEthnic &&
-      (text.includes("性别") || text.includes("民族"))
-    ) {
-      const genderAndNation = text.replace("性别", "").trim();
-      // 获取性别
-      if (text.includes("女") || text.includes("男")) {
-        info["gender"] = text.includes("女") ? "女" : "男";
-        info["ethnic"] = text.substring(text.includes(info["gender"]) + 4).trim();
-      } else {
-        const genderIndex = genderAndNation.indexOf("民族");
-        if (genderIndex !== -1) {
-          info["ethnic"] = genderAndNation.substring(genderIndex + 2).trim();
-        }
-      }
-      foundGenderAndEthnic = true;
-    } else if (!foundBirth && text.includes("出生")) {
-      info["birth"] = text.replace("出生", "").trim();
+    }
+    // 提取性别
+    if (!foundGender && text.includes("性别")) {
+      const genderIndex = text.indexOf("性别");
+      info["gender"] = text.substring(genderIndex + 2, genderIndex + 3).trim();
+      foundGender = true;
+    }
+    // 提取民族
+    if (!foundEthnic && text.includes("民族")) {
+      const ethnicIndex = text.indexOf("民族");
+      info["ethnic"] = text.substring(ethnicIndex + 2).trim();
+      foundEthnic = true;
+    }
+    // 提取出生
+    if (!foundBirth && text.includes("出生")) {
+      const birthIndex = text.indexOf("出生");
+      const birthEndIndex = text.indexOf("日");
+      info["birth"] = text
+        .substring(
+          birthIndex + 2,
+          birthEndIndex === -1 ? birthIndex + 13 : birthEndIndex + 1
+        )
+        .trim();
       foundBirth = true;
-    } else if (!foundAddress && text.includes("住址")) {
+    }
+    // 提取身份证
+    if (!foundId && pattern.test(text)) {
+      const match = text.match(/\d.*/);
+      info["id"] = match[0].substring(0, 18);
+      foundId = true;
+    }
+  });
+
+  // 高级查找
+  // 只查到民族，高级查找性别
+  if (!foundGender && foundEthnic) {
+    await data.forEach((item) => {
+      const text = item.text;
+      if (text.includes("民族")) {
+        info["gender"] = text
+          .substring(text.indexOf("民族") - 1)
+          .trim();
+      }
+    });
+  }
+  // 只查找到性别，高级查找民族
+  if (foundGender && !foundEthnic) {
+    await data.forEach((item) => {
+      const text = item.text;
+      if (text.includes("性别")) {
+        info["ethnic"] = text.substring(info["gender"] + 4).trim();
+      }
+    });
+  }
+
+  // 提取地址
+  await data.forEach((item) => {
+    const text = item.text;
+    if (text.includes("住址")) {
       let address = "";
       for (let i = data.indexOf(item); i < data.length; i++) {
         address += data[i].text.replace("住址", "").trim() + "";
-        if (data[i + 1] && pattern.test(data[i + 1].text)) {
+        // 如果下一行含有“身份信息”，则中断然后舍弃
+        if (data[i + 1] && addressPattern.test(data[i + 1].text)) {
           break;
         }
       }
-      info["address"] = address.trim();
-      foundAddress = true;
-    } else if (pattern.test(text)) {
-      const match = text.match(/\d.*/);
-      info["id"] = match[0];
+      info["address"] = address;
     }
   });
 
@@ -122,13 +163,13 @@ router.post(
 
       // 添加await
       const data = await ocr.flush({ image_base64: imgBase64 });
-      console.log("data: ", data);
 
       if (data.code === 100) {
         // 合并一行后的Text
         const tempMergeText = mergeText(data.data);
+        console.log('tempMergeText: ', tempMergeText);
         // 提取后的数组
-        const extractInfo = extractInformation(tempMergeText);
+        const extractInfo = await extractInformation(tempMergeText);
         console.log(extractInfo);
         // 字符串数组
         const textArray = tempMergeText.map((item) => item.text);
