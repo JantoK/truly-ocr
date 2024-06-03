@@ -87,9 +87,9 @@ async function extractInformation(data) {
     }
     // 提取身份证
     if (!foundId && pattern.test(text)) {
-      const match = text.match(/\d.*/);
+      const match = text.match(/\b\d{10,}[Xx]?\b/g);
       if(match) {
-        info["id"] = match[0].substring(0, 18);
+        info["id"] = match[0]
         foundId = true;
       }
     }
@@ -115,6 +115,7 @@ async function extractInformation(data) {
     }
   }
 
+  // 高级查找性别
   if(!foundGender) {
     for(let i = 0; i < data.length; i++) {
         const text = data[i].text;
@@ -123,6 +124,19 @@ async function extractInformation(data) {
             foundGender = true;
             break;
         }
+    }
+  }
+
+  // 高级查找id
+  if(!foundId) {
+    for(let i = 0; i < data.length; i++) {
+        const text = data[i].text;
+        const match = text.match(/\b\d{10,}[Xx]?\b/g);
+        if(match) {
+        info["id"] = match[0]
+        foundId = true;
+        break;
+      }
     }
   }
 
@@ -139,10 +153,11 @@ async function extractInformation(data) {
   }
   // 只查找到性别，高级查找民族
   if (foundGender && !foundEthnic) {
+    console.log('高级查找民族')
     await data.forEach((item) => {
       const text = item.text;
       if (text.includes(info["gender"])) {
-        info["ethnic"] = text.substring(info["gender"] + 4).trim();
+        info["ethnic"] = text.substring( text.indexOf(info["gender"]) + 3 ) .trim();
       }
     });
   }
