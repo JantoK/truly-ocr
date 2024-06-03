@@ -172,13 +172,13 @@ router.post(
         const extractInfo = await extractInformation(tempMergeText);
         console.log(extractInfo);
         // 字符串数组
-        const textArray = tempMergeText.map((item) => item.text);
+        // const textArray = tempMergeText.map((item) => item.text);
         return res.status(200).send({
           code: 200,
           message: "提取成功",
           data: {
-            infoDetail: textArray,
-            extract: extractInfo,
+            // infoDetail: textArray,
+            extract: extractInfo
           },
         });
       } else {
