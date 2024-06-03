@@ -96,6 +96,36 @@ async function extractInformation(data) {
   });
 
   // 高级查找
+  // 单字姓名
+  if(!foundName) {
+    for(let i = 0; i < data.length; i++) {
+        const text = data[i].text;
+        if (text.includes("姓")||text.includes("名")) {
+            if(text.includes("姓")) {
+                const nameIndex = text.indexOf("姓");
+                info["name"] = text.substring(nameIndex + 2).trim();
+             }
+             if(text.includes("名")) {
+                 const nameIndex = text.indexOf("名");
+                 info["name"] = text.substring(nameIndex + 1).trim();
+             }
+             foundName = true;
+             break;
+        }
+    }
+  }
+
+  if(!foundGender) {
+    for(let i = 0; i < data.length; i++) {
+        const text = data[i].text;
+        if (text.includes("男")||text.includes("女")) {
+            info["gender"] = text.includes("男")?'男':'女'
+            foundGender = true;
+            break;
+        }
+    }
+  }
+
   // 只查到民族，高级查找性别
   if (!foundGender && foundEthnic) {
     await data.forEach((item) => {
@@ -111,7 +141,7 @@ async function extractInformation(data) {
   if (foundGender && !foundEthnic) {
     await data.forEach((item) => {
       const text = item.text;
-      if (text.includes("性别")) {
+      if (text.includes(info["gender"])) {
         info["ethnic"] = text.substring(info["gender"] + 4).trim();
       }
     });
@@ -120,6 +150,7 @@ async function extractInformation(data) {
   // 提取地址
   await data.forEach((item) => {
     const text = item.text;
+    // 优先匹配完整
     if (text.includes("住址")) {
       let address = "";
       for (let i = data.indexOf(item); i < data.length; i++) {
@@ -131,6 +162,18 @@ async function extractInformation(data) {
       }
       info["address"] = address;
     }
+    if (text.includes("住")||text.includes("址")) {
+        let address = "";
+        let keyword = text.includes("住")?"住":"址"
+        for (let i = data.indexOf(item); i < data.length; i++) {
+          address += data[i].text.replace(keyword, "").trim() + "";
+          // 如果下一行含有“身份信息”，则中断然后舍弃
+          if (data[i + 1] && addressPattern.test(data[i + 1].text)) {
+            break;
+          }
+        }
+        info["address"] = address;
+      }
   });
 
   return info;
