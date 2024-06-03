@@ -87,7 +87,10 @@ async function extractInformation(data) {
     }
     // 提取身份证
     if (!foundId && pattern.test(text)) {
-      const match = text.match(/\b\d{10,}[Xx]?\b/g);
+      console.log("进入基础循环")
+      console.log(text)
+      const match = text.match(/\d{10,}[Xx]?/g);
+      console.log('match: ', match);
       if(match) {
         info["id"] = match[0]
         foundId = true;
@@ -129,9 +132,11 @@ async function extractInformation(data) {
 
   // 高级查找id
   if(!foundId) {
+    console.log("进入高级循环")
     for(let i = 0; i < data.length; i++) {
         const text = data[i].text;
-        const match = text.match(/\b\d{10,}[Xx]?\b/g);
+        const match = text.match(/\d{10,}[Xx]?/g);
+        console.log('match: ', match);
         if(match) {
         info["id"] = match[0]
         foundId = true;
