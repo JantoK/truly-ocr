@@ -100,7 +100,7 @@ async function extractInformation(data) {
       const text = item.text;
       if (text.includes("民族")) {
         info["gender"] = text
-          .substring(text.indexOf("民族") - 1)
+          .substring(text.indexOf("民族") - 1, text.indexOf("民族"))
           .trim();
       }
     });
