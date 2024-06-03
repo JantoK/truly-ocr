@@ -88,8 +88,10 @@ async function extractInformation(data) {
     // 提取身份证
     if (!foundId && pattern.test(text)) {
       const match = text.match(/\d.*/);
-      info["id"] = match[0].substring(0, 18);
-      foundId = true;
+      if(match) {
+        info["id"] = match[0].substring(0, 18);
+        foundId = true;
+      }
     }
   });
 
